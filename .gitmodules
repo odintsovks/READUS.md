@@ -1,3 +1,6 @@
 [submodule "READUS-server"]
 	path = READUS-server
 	url = git@github.com:odintsovks/READUS-server.git
+[submodule "READUS-client"]
+	path = READUS-client
+	url = git@github.com:odintsovks/READUS-client.git
