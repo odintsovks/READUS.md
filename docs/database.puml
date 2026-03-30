@@ -1,0 +1,161 @@
+@startuml
+'src: https://jee.gr/database-modeling-tutorial-using-plantuml/'
+!define pk(x) <b><color:#b8861b><&key></color> x</b>
+!define fk(x) <color:#aaaaaa><&key></color> x
+!define uk(x) <color:#636363><&key></color> x
+!define col(x) <color:#efefef><&media-record></color> x
+!define table(x) entity x << (T, white) >>
+
+table(Users) {
+  pk(id): UUID <<PK>>
+  --
+  uk(email): VARCHAR <<UK>>
+  uk(username): VARCHAR <<UK>>
+  col(password_hash): VARCHAR
+  col(provider): VARCHAR
+  col(provider_id): VARCHAR
+  col(created_at): TIMESTAMP
+  col(updated_at): TIMESTAMP
+}
+
+table(Profiles) {
+  pk(id): UUID <<PK>>
+  --
+  fk(user_id): UUID <<FK>>
+  col(bio): VARCHAR
+  col(location): VARCHAR
+  col(created_at): TIMESTAMP
+  col(updated_at): TIMESTAMP
+}
+
+table(Sessions) {
+  pk(id): UUID <<PK>>
+  --
+  fk(user_id): UUID <<FK>>
+  uk(token): VARCHAR <<UK>>
+  col(ip_address): INET
+  col(user_agent): VARCHAR
+  col(created_at): TIMESTAMP
+  col(expires_at): TIMESTAMP
+}
+
+table(Branches) {
+  pk(id): UUID <<PK>>
+  --
+  uk(name): VARCHAR <<UK>>
+  uk(slug): VARCHAR <<UK>>
+  col(description): VARCHAR
+  col(created_at): TIMESTAMP
+}
+
+table(Discussions) {
+  pk(id): UUID <<PK>>
+  --
+  fk(user_id): UUID <<FK>>
+  fk(branch_id): UUID <<FK>>
+  fk(last_message_id): UUID <<FK>>
+  col(title): VARCHAR
+  uk(slug): VARCHAR <<UK>>
+  col(content): TEXT
+  col(view_count): INT
+  col(reply_count): INT
+  col(reaction_count): INT
+  col(created_at): TIMESTAMP
+  col(updated_at): TIMESTAMP
+}
+
+table(Messages) {
+  pk(id): UUID <<PK>>
+  --
+  fk(user_id): UUID <<FK>>
+  fk(discussion_id): UUID <<FK>>
+  fk(parent_message_id): UUID <<FK>>
+  col(content): TEXT
+  col(created_at): TIMESTAMP
+  col(updated_at): TIMESTAMP
+}
+
+table(Uploads) {
+  pk(id): UUID <<PK>>
+  --
+  fk(user_id): UUID <<FK>>
+  fk(message_id): UUID <<FK>>
+  fk(discussion_id): UUID <<FK>>
+  col(original_name): VARCHAR
+  uk(stored_path): VARCHAR <<UK>>
+  col(media_type): SMALLINT
+  col(processing_status): SMALLINT
+  col(created_at): TIMESTAMP
+  col(updated_at): TIMESTAMP
+}
+
+table(Reactions) {
+  pk(id): UUID <<PK>>
+  --
+  fk(user_id): UUID <<FK>>
+  fk(discussion_id): UUID <<FK>>
+  fk(message_id): UUID <<FK>>
+  col(type): SMALLINT
+  col(created_at): TIMESTAMP
+}
+
+table(AnalyticsEvents) {
+  pk(id): UUID <<PK>>
+  --
+  fk(user_id): UUID <<FK>>
+  col(event_type): SMALLINT
+  col(entity_id): UUID
+  col(entity_type): SMALLINT
+  col(page_url): VARCHAR
+  col(event_time): TIMESTAMP
+  col(ip_address): INET
+  col(user_agent): VARCHAR
+  col(event_time): TIMESTAMP
+}
+
+table(Feeds) {
+  pk(id): UUID <<PK>>
+  --
+  fk(user_id): UUID <<FK>>
+  fk(discussion_id): UUID <<FK>>
+  col(relevance_score): FLOAT
+  col(added_at): TIMESTAMP
+}
+
+table(OAuthTokens) {
+  pk(id): UUID <<PK>>
+  --
+  fk(user_id): UUID <<FK>>
+  col(provider): VARCHAR
+  col(access_token): VARCHAR
+  col(refresh_token): VARCHAR
+  col(expires_in): INT
+  col(expires_at): TIMESTAMP
+  col(created_at): TIMESTAMP
+}
+
+Users ||--o{ Profiles : "1:N"
+Users ||--o{ Sessions : "1:N"
+Users ||--o{ Discussions : "1:N"
+Users ||--o{ Messages : "1:N"
+Users ||--o{ Uploads : "1:N"
+Users ||--o{ Reactions : "1:N"
+Users ||--o{ AnalyticsEvents : "1:N"
+Users ||--o{ Feeds : "1:N"
+Users ||--o{ OAuthTokens : "1:N"
+
+Branches ||--o{ Discussions : "1:N"
+
+Discussions ||--o{ Messages : "1:N"
+Discussions ||--o{ Uploads : "1:N"
+Discussions ||--o{ Reactions : "1:N"
+Discussions ||--o{ Feeds : "1:N"
+
+Messages ||--o{ Messages : "self-referencing"
+Messages ||--o{ Uploads : "1:N"
+Messages ||--o{ Reactions : "1:N"
+Messages ||--o{ AnalyticsEvents : "1:N"
+
+Uploads ||--o{ AnalyticsEvents : "1:N"
+
+@enduml
