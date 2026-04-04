@@ -18,26 +18,22 @@ workspace "READUS" "Forum" {
             }
 
             server = container "Приложение-сервер" "Приложение на Spring Boot" "Java" "Backend" {
-                auth = component "Сервис аутентификации" "Аутентифицирует и авторизирует пользователей"
-                user = component "Сервис работы с личным кабинетом" "Запрашивает данные из личного кабинета"
-                message = component "Сервис работы с сообщениями" "Поддерживает API, операции CRUD для работы с сообщениями"
-                branch = component "Сервис работы с ветками" "Поддерживает API, операции CRUD для работы с ветками"
-                discussion = component "Сервис работы с обсуждениями" "Поддерживает API, операции CRUD для работы с обсуждениями"
-                imgProcessor = component "Сервис обработки изображений" "Обрабатывает (ресайз) изображения для предпросмотра"
-                videoProcessor = component "Сервис обработки видео" "Обрабатывает (сжимает) видео для предпросмотра"
-                analytics = component "Сервис аналитики" "Собирает статистику, основанную на действиях пользователя"
-                ranking = component "Сервис ранжирования" "Ранжирует обсуждения"
-                feedBuilder = component "Сервис лент" "Создаёт персонализированные ленты"
-                textProcessor = component "Обработчик текста" "Обрабатывает Markdown, защита от XSS, фильтрация"
+                user = component "Сервис личного кабинета" "Работа с данными пользователей"
+                text = component "Сервис текстовых данных" "Поддерживает API, операции CRUD для работы с сообщениями, обсуждениями и ветками"
+                media = component "Сервис медиа" "Обрабатывает (ресайз, сжатие) изображений и видео для предпросмотра"
+                feed = component "Сервис лент" "Создаёт персонализированные ленты на основе статистики и ранжирования"
             }
  
-            database = container "База данных" "Общее хранилище для данных" "PostgreSQL" "Database" {
+            database = container "База данных" "Шардированное хранилище для данных" "PostgreSQL" "Database" {
                 user = component "Хранилище пользователей" "Хранит пользовательские данные: личный кабинет, учётные данные"
                 session = component "Хранилище сеансов" "Хранит данные о пользовательских сеансах и токенах доступа"
                 branch = component "Хранилище веток" "Хранит информацию о ветках"
                 discussion = component "Хранилище обсуждений" "Хранит информацию об обсуждениях"
-                message = component "Хранилище сообщений" "Хранит сообщения"
                 analytics = component "Хранение аналитики" "Хранит собранную статистику"
+            }
+
+            messageDatabase = container "База данных для сообщений" "Хранилище для сообщений" "Cassandra" "Database" {
+                message = component "Хранилище сообщений" "Хранит сообщения"
             }
 
             cache = container "Кэш" "Кэш" "Redis" "Database" {
@@ -76,42 +72,40 @@ workspace "READUS" "Forum" {
 
         forum.client.discussion -> forum.client.editDiscussion "Переходит на страницу редактирования обсуждения"
 
-        forum.client.main -> forum.server.feedBuilder "Запрашивает ленту"
-        forum.client.login -> forum.server.auth "Аутентифицирует пользователя"
-        forum.client.register -> forum.server.auth "Регистрирует пользователя"
+        forum.client.main -> forum.server.feed "Запрашивает ленту"
+        forum.client -> forum.server.user "Аутентифицирует и регистрирует пользователя, запрашивает данные личного кабинета"
+        forum.client.login -> forum.server.user "Аутентифицирует пользователя"
+        forum.client.register -> forum.server.user "Регистрирует пользователя"
         forum.client.profile -> forum.server.user "Запрашивает данные личного кабинета"
-        forum.client.discussion -> forum.server.discussion "Запрашивает данные обсуждения, позволяет добавить реакцию"
-        forum.client.discussion -> forum.server.message "Позволяет оставить комментарий"
-        forum.client.editDiscussion -> forum.server.discussion "Позволяет создавать/редактировать обсуждение"
-        forum.client.editDiscussion -> forum.server.branch "Позволяет создать ветку обсуждений"
+        forum.client -> forum.server.text "Работа с обсуждениями, реакциями, комментариями"
+        forum.client.discussion -> forum.server.text "Запрашивает данные обсуждения, позволяет добавить реакцию, оставить комментарий"
+        forum.client.editDiscussion -> forum.server.text "Позволяет создавать/редактировать обсуждение"
 
-        forum.server.auth -> oauth "Запрашивает аутентификацию пользователя"
+        forum.server.user -> oauth "Запрашивает аутентификацию пользователя"
 
-        forum.server.auth -> forum.database.user "Хранит пользователя"
-        forum.server.auth -> forum.database.session "Хранит сеанс"
-        forum.server.branch -> forum.database.branch "Хранит ветки"
-        forum.server.discussion -> forum.database.discussion "Хранит обсуждения"
-        forum.server.message -> forum.database.message "Хранит сообщения"
-        forum.server.analytics -> forum.database.analytics "Хранит статистику"
-        forum.server.ranking -> forum.database.analytics "Запрашивает статистику"
+        forum.server.user -> forum.database "Хранит пользователя, сеанс"
+        forum.server.user -> forum.database.user "Хранит пользователя"
+        forum.server.user -> forum.database.session "Хранит сеанс"
+        forum.server.text -> forum.database "Хранит ветки, обсуждения"
+        forum.server.text -> forum.database.branch "Хранит ветки"
+        forum.server.text -> forum.database.discussion "Хранит обсуждения"
+        forum.server.feed -> forum.database.analytics "Хранит статистику"
 
-        forum.server.feedBuilder -> forum.cache.feed "Хранит ленты"
+        forum.server.text -> forum.messageDatabase.message "Хранит сообщения"
 
-        forum.server.imgProcessor -> forum.storage.img "Хранит изображения"
-        forum.server.videoProcessor -> forum.storage.video "Хранит видео"
+        forum.server.feed -> forum.cache.feed "Хранит ленты"
 
-        forum.server.textProcessor -> forum.queue.ai "Отправляет текст на фильтрацию"
-        forum.server.imgProcessor -> forum.queue.img "Отправляет изображения на обработку"
-        forum.server.videoProcessor -> forum.queue.video "Отправлят видео на обработку"
+        forum.server.media -> forum.storage "Хранит изображения и видео"
+        forum.server.media -> forum.storage.img "Хранит изображения"
+        forum.server.media -> forum.storage.video "Хранит видео"
 
-        forum.server.feedBuilder -> forum.server.ranking "Запрашивает данные ранжирования"
-        forum.server.discussion -> forum.server.textProcessor "Запрашивает обработку текста"
-        forum.server.discussion -> forum.server.imgProcessor "Запрашивает обработку изображений"
-        forum.server.discussion -> forum.server.videoProcessor "Запрашивает обработку видео"
-        forum.server.message -> forum.server.textProcessor "Запрашивает обработку текста"
-        forum.server.message -> forum.server.imgProcessor "Запрашивает обработку изображений"
-        forum.server.message -> forum.server.videoProcessor "Запрашивает обработку видео"
+        forum.server.text -> forum.queue.ai "Отправляет текст на фильтрацию"
+        forum.server.media -> forum.queue.img "Отправляет изображения на обработку"
+        forum.server.media -> forum.queue.video "Отправлят видео на обработку"
 
+        forum.server.text -> forum.server.media "Запрашивает обработку изображений, видео"
+
+        forum.queue -> forum.ffmpeg "Обрабатывает видео, изображения"
         forum.queue.img -> forum.ffmpeg "Обрабатывает видео"
         forum.queue.video -> forum.ffmpeg "Обрабатывает изображения"
         forum.queue.ai -> forum.ai "Обрабатывает текст"
